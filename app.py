@@ -33,11 +33,21 @@ with aba_treino:
     df_preview = pd.read_sql_query("SELECT exercicio, series, repeticoes, imagem_url FROM public.fichas_personal WHERE nome_treino = %s", conn, params=(treino_hoje,))
     conn.close()
     
-    with st.expander("Visualizar exercícios da ficha selecionada"):
+with st.expander("Visualizar exercícios da ficha selecionada"):
         if not df_preview.empty:
             for _, row in df_preview.iterrows():
                 col1, col2 = st.columns([1, 3])
-                if row['imagem_url']: col1.image(row['imagem_url'], width=80)
+                
+                # Verificação de segurança para a imagem
+                img_url = row.get('imagem_url')
+                if img_url and isinstance(img_url, str) and len(img_url.strip()) > 5:
+                    try:
+                        col1.image(img_url, width=80)
+                    except:
+                        col1.write("Sem imagem") # Se o link quebrar, mostra um texto em vez de travar
+                else:
+                    col1.write("Sem imagem")
+                
                 col2.write(f"**{row['exercicio']}** - {row['series']}x {row['repeticoes']}")
         else:
             st.write("Ficha vazia.")
