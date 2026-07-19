@@ -5,7 +5,7 @@ import time
 from datetime import date
 
 # Configuração da página
-st.set_page_config(page_title="PULSE", layout="centered")
+st.set_page_config(page_title="Pulse", layout="centered")
 
 st.markdown("""
     <style>
@@ -14,14 +14,13 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-st.title("PULSE")
+st.title("PULSE 🚀")
 
 DATABASE_URL = "postgresql://postgres.fcinidlhstrvnijrjsym:aKl9XHr8W3VLuICT@aws-1-sa-east-1.pooler.supabase.com:6543/postgres"
 
 def conectar():
     return psycopg2.connect(DATABASE_URL)
 
-# Criando as abas
 aba_treino, aba_fichas, aba_metricas = st.tabs(["Treino do Dia", "Configurar Ficha", "Métricas e XP"])
 
 # ----------------- ABA 1: TREINO -----------------
@@ -33,21 +32,19 @@ with aba_treino:
     df_preview = pd.read_sql_query("SELECT exercicio, series, repeticoes, imagem_url FROM public.fichas_personal WHERE nome_treino = %s", conn, params=(treino_hoje,))
     conn.close()
     
-with st.expander("Visualizar exercícios da ficha selecionada"):
+    with st.expander("Visualizar exercícios da ficha selecionada"):
         if not df_preview.empty:
             for _, row in df_preview.iterrows():
                 col1, col2 = st.columns([1, 3])
-                
-                # Verificação de segurança para a imagem
+                # Correção de imagem segura
                 img_url = row.get('imagem_url')
                 if img_url and isinstance(img_url, str) and len(img_url.strip()) > 5:
                     try:
                         col1.image(img_url, width=80)
                     except:
-                        col1.write("Sem imagem") # Se o link quebrar, mostra um texto em vez de travar
+                        col1.write("Sem imagem")
                 else:
                     col1.write("Sem imagem")
-                
                 col2.write(f"**{row['exercicio']}** - {row['series']}x {row['repeticoes']}")
         else:
             st.write("Ficha vazia.")
@@ -117,8 +114,6 @@ with aba_fichas:
     
     st.divider()
     st.subheader("Seus Treinos Cadastrados")
-    
-    # Lista os treinos para separar por blocos
     lista_treinos = ["Treino A", "Treino B", "Treino C", "Treino D", "Treino E"]
     
     for t in lista_treinos:
