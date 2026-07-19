@@ -4,28 +4,48 @@ import pandas as pd
 import time
 from datetime import date
 
-# Configuração da página
+# Configuração da página e Estilo Customizado
 st.set_page_config(page_title="Pulse", layout="centered")
 
 st.markdown("""
     <style>
-    .exercicio-container { border: 1px solid #333; padding: 15px; border-radius: 10px; margin-bottom: 10px; background-color: #1a1a1a; }
-    #MainMenu {visibility: hidden;} footer {visibility: hidden;} header {visibility: hidden;}
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
+    
+    /* Aplica a fonte apenas em elementos de texto, não em ícones ou botões */
+    div, p, h1, h2, h3, h4, h5, h6, span {
+        font-family: 'Inter', sans-serif !important;
+    }
+    
+    .exercicio-container { 
+        border: 1px solid #444; 
+        padding: 20px; 
+        border-radius: 12px; 
+        margin-bottom: 15px; 
+        background-color: #1a1a1a; 
+    }
+    
+    .info-exercicio {
+        line-height: 1.6;
+    }
+    
+    #MainMenu {visibility: hidden;} 
+    footer {visibility: hidden;} 
+    header {visibility: hidden;}
     </style>
 """, unsafe_allow_html=True)
 
-st.title("PULSE 🚀")
+st.title("PULSE")
 
 DATABASE_URL = "postgresql://postgres.fcinidlhstrvnijrjsym:aKl9XHr8W3VLuICT@aws-1-sa-east-1.pooler.supabase.com:6543/postgres"
 
 def conectar():
     return psycopg2.connect(DATABASE_URL)
 
-aba_treino, aba_fichas, aba_metricas = st.tabs(["Treino do Dia", "Configurar Ficha", "Métricas e XP"])
+aba_treino, aba_fichas, aba_metricas = st.tabs(["Treino do Dia", "Configurar Ficha", "Métricas"])
 
 # ----------------- ABA 1: TREINO -----------------
 with aba_treino:
-    data_treino = st.date_input("Data", value=date.today())
+    data_treino = st.date_input("Data", value=date.today(), format="DD/MM/YYYY")
     treino_hoje = st.selectbox("Selecione a ficha:", ["Treino A", "Treino B", "Treino C", "Treino D", "Treino E"])
     
     conn = conectar()
@@ -36,7 +56,6 @@ with aba_treino:
         if not df_preview.empty:
             for _, row in df_preview.iterrows():
                 col1, col2 = st.columns([1, 3])
-                # Correção de imagem segura
                 img_url = row.get('imagem_url')
                 if img_url and isinstance(img_url, str) and len(img_url.strip()) > 5:
                     try:
@@ -45,14 +64,16 @@ with aba_treino:
                         col1.write("Sem imagem")
                 else:
                     col1.write("Sem imagem")
-                col2.write(f"**{row['exercicio']}** - {row['series']}x {row['repeticoes']}")
+                
+                # Exibição mais limpa
+                col2.markdown(f"<div class='info-exercicio'><strong>{row['exercicio']}</strong><br><small>{row['series']} Séries | {row['repeticoes']} Repetições</small></div>", unsafe_allow_html=True)
         else:
             st.write("Ficha vazia.")
 
     if st.button("Iniciar Descanso (60s)"):
         with st.empty():
             for seconds in range(60, 0, -1):
-                st.write(f"Descanso: {seconds} segundos restantes")
+                st.write(f"Descanso: {seconds} segundos")
                 time.sleep(1)
             st.write("Descanso finalizado!")
 
@@ -74,15 +95,15 @@ with aba_treino:
                 st.markdown(f'<div class="exercicio-container">', unsafe_allow_html=True)
                 col_img, col_info, col_input, col_check = st.columns([1, 2, 1, 1])
                 if row['imagem_url']: col_img.image(row['imagem_url'], width=60)
-                col_info.write(f"**{row['exercicio']}**\n{row['series']}x{row['repeticoes']}")
+                col_info.markdown(f"<strong>{row['exercicio']}</strong><br>{row['series']} x {row['repeticoes']}", unsafe_allow_html=True)
                 carga = col_input.number_input("kg", value=carga_ant, key=f"c_{i}")
                 feito = col_check.checkbox("Feito", key=f"ch_{i}")
                 resultados[row['exercicio']] = {'carga': carga, 'feito': feito}
                 st.markdown('</div>', unsafe_allow_html=True)
 
-            observacao = st.text_area("Observações do treino:")
+            observacao = st.text_area("Observações:")
             
-            if st.form_submit_button("Finalizar e Salvar"):
+            if st.form_submit_button("Salvar Treino"):
                 conn = conectar()
                 cur = conn.cursor()
                 for ex, dados in resultados.items():
@@ -92,7 +113,7 @@ with aba_treino:
                 conn.commit()
                 conn.close()
                 st.session_state['treino_ativo'] = False
-                st.success("Treino salvo!")
+                st.success("Treino salvo com sucesso!")
                 st.rerun()
 
 # ----------------- ABA 2: CONFIGURAR FICHA -----------------
@@ -113,7 +134,7 @@ with aba_fichas:
             st.rerun()
     
     st.divider()
-    st.subheader("Seus Treinos Cadastrados")
+    st.subheader("Seus Treinos")
     lista_treinos = ["Treino A", "Treino B", "Treino C", "Treino D", "Treino E"]
     
     for t in lista_treinos:
@@ -125,7 +146,7 @@ with aba_fichas:
             if not df_t.empty:
                 for _, row in df_t.iterrows():
                     col1, col2 = st.columns([5, 1])
-                    col1.write(f"{row['exercicio']} - {row['series']}x{row['repeticoes']}")
+                    col1.markdown(f"{row['exercicio']} <br><small>{row['series']} séries x {row['repeticoes']} reps</small>", unsafe_allow_html=True)
                     if col2.button("X", key=f"del_{row['id']}"):
                         conn = conectar()
                         cur = conn.cursor()
@@ -141,7 +162,17 @@ with aba_metricas:
     conn = conectar()
     df_h = pd.read_sql_query("SELECT * FROM public.historico_treinos", conn)
     conn.close()
+    
     if not df_h.empty:
-        st.line_chart(df_h.pivot(index='data', columns='exercicio', values='carga_kg'))
+        # Garante que a coluna de data seja datetime
+        df_h['data'] = pd.to_datetime(df_h['data'])
+        
+        # Pivo dos dados
+        df_pivot = df_h.pivot(index='data', columns='exercicio', values='carga_kg')
+        
+        # Formata o índice para exibir como DD/MM/YYYY no gráfico
+        df_pivot.index = df_pivot.index.strftime('%d/%m/%Y')
+        
+        st.line_chart(df_pivot)
     else:
-        st.write("Sem dados de treino ainda.")
+        st.write("Nenhum dado registrado ainda.")
