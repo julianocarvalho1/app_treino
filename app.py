@@ -7,7 +7,7 @@ from datetime import date
 # Configuração da página
 st.set_page_config(page_title="Pulse", layout="centered")
 
-# CSS Ajustado para visual mais sutil
+# CSS Ajustado
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
@@ -19,6 +19,16 @@ st.markdown("""
     .exercicio-bloco { 
         padding-top: 10px; 
         padding-bottom: 10px; 
+    }
+    
+    /* Estilo para a imagem ser clicável e ter um efeito de pointer */
+    .clickable-img {
+        cursor: pointer;
+        border-radius: 8px;
+        transition: transform 0.2s;
+    }
+    .clickable-img:hover {
+        transform: scale(1.05);
     }
     
     #MainMenu {visibility: hidden;} 
@@ -63,15 +73,13 @@ with aba_treino:
                 col1, col2 = st.columns([1, 4])
                 img_url = row.get('imagem_url')
                 if img_url and isinstance(img_url, str) and len(img_url.strip()) > 5:
-                    try:
-                        col1.image(img_url, width=60)
-                    except:
-                        col1.write("—")
+                    # Imagem clicável
+                    col1.markdown(f'<a href="{img_url}" target="_blank"><img src="{img_url}" width="60" class="clickable-img"></a>', unsafe_allow_html=True)
                 else:
                     col1.write("—")
                 
                 col2.markdown(f"<div class='pulse-content'><strong>{row['exercicio']}</strong><br><small>{row['series']} séries | {row['repeticoes']} reps</small></div>", unsafe_allow_html=True)
-                st.divider() # Linha sutil separando os exercícios
+                st.divider() 
         else:
             st.write("Ficha vazia.")
 
@@ -97,13 +105,16 @@ with aba_treino:
                 
                 st.markdown(f'<div class="exercicio-bloco pulse-content">', unsafe_allow_html=True)
                 col_img, col_info, col_input, col_check = st.columns([1, 2, 1, 1])
-                if row['imagem_url']: col_img.image(row['imagem_url'], width=50)
+                
+                if row['imagem_url']: 
+                    col_img.markdown(f'<a href="{row["imagem_url"]}" target="_blank"><img src="{row["imagem_url"]}" width="50" class="clickable-img"></a>', unsafe_allow_html=True)
+                
                 col_info.markdown(f"<strong>{row['exercicio']}</strong><br>{row['series']} x {row['repeticoes']}", unsafe_allow_html=True)
                 carga = col_input.number_input("kg", value=carga_ant, key=f"c_{i}")
                 feito = col_check.checkbox("Feito", key=f"ch_{i}")
                 resultados[row['exercicio']] = {'carga': carga, 'feito': feito}
                 st.markdown('</div>', unsafe_allow_html=True)
-                st.divider() # Linha sutil entre os inputs
+                st.divider() 
 
             observacao = st.text_area("Observações:")
             if st.form_submit_button("Salvar Treino"):
