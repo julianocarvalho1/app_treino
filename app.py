@@ -2,6 +2,7 @@ import streamlit as st
 import psycopg2
 import pandas as pd
 import time
+import altair as alt
 from datetime import date
 
 # Configuracao da pagina
@@ -31,7 +32,7 @@ st.markdown(f"""
         background-color: #181818 !important;
     }}
     
-    /* Forca a cor de TODAS as caixas de selecao e inputs para grafite escuro, removendo tons avermelhados */
+    /* Forca a cor de TODAS as caixas de selecao e inputs */
     div[data-baseweb="select"] > div,
     input[type="text"],
     input[type="number"],
@@ -77,13 +78,14 @@ def conectar():
     return psycopg2.connect(DATABASE_URL)
 
 # ----------------- CONFIGURACOES DE GRUPOS MUSCULARES -----------------
+# Descricoes atualizadas conforme sua solicitacao
 descricoes_treinos = {
     "Juliano": {
         "Treino A": "PEITO, ESTIMULO PARA OMBRO, TRICEPS E PANTURRILHA",
-        "Treino B": "COSTA, BICEPS E ABDOMEN",
-        "Treino C": "PERNA COMPLETA",
-        "Treino D": "OMBROS E TRAPEZIO",
-        "Treino E": "BRACO COMPLETO"
+        "Treino B": "COSTA, ESTIMULO PARA POSTERIOR DE OMBRO, BICEPS E PANTURRILHA",
+        "Treino C": "COXA COMPLETA",
+        "Treino D": "OMBRO COMPLETO E ESTIMULO PARA PEITO E PANTURRILHA",
+        "Treino E": "COSTA, BICEPS, TRICEPS E PANTURRILHA"
     },
     "Sobrinha": {
         "Treino A": "MEMBROS INFERIORES",
@@ -155,7 +157,7 @@ def carregar_historico_recente():
     conn.close()
     return df
 
-# ----------------- FUNCAO VISUAL DOS EXERCICIOS (REDUZIDO PARA MOBILE) -----------------
+# ----------------- FUNCAO VISUAL DOS EXERCICIOS -----------------
 def renderizar_cartao_exercicio(row, index):
     bg_color = "rgba(255, 255, 255, 0.04)" if index % 2 == 0 else "rgba(255, 255, 255, 0.08)"
     
@@ -334,12 +336,28 @@ with aba_metricas:
             df_h = df_memoria_full[df_memoria_full['nome_treino'].str.startswith(f"{usuario_ativo}_", na=False)].copy()
 
         if not df_h.empty:
-            # Mantendo a coluna data como formato datetime puro, sem converter para string.
-            # Isso forca o Streamlit a desenhar o eixo X do grafico como uma linha do tempo nativa,
-            # organizando as datas horizontalmente e de forma limpa.
+            # Tratamento de Data e Grafico usando Altair para controle absoluto de cor e formato
             df_h['data'] = pd.to_datetime(df_h['data'])
-            df_pivot = df_h.pivot(index='data', columns='exercicio', values='carga_kg')
-            st.line_chart(df_pivot)
+            
+            grafico = alt.Chart(df_h).mark_line(point=True).encode(
+                x=alt.X('data:T', axis=alt.Axis(format='%d/%m/%Y', title='Data', labelAngle=-45)),
+                y=alt.Y('carga_kg:Q', title='Carga (kg) ou Tempo (min)'),
+                color=alt.Color('exercicio:N', legend=alt.Legend(title="Exercicio")),
+                tooltip=[alt.Tooltip('data:T', format='%d/%m/%Y', title='Data'), 'exercicio', 'carga_kg']
+            ).properties(
+                height=400
+            ).configure_view(
+                strokeWidth=0
+            ).configure_axis(
+                labelColor='#FFFFFF',
+                titleColor='#FFFFFF',
+                gridColor='rgba(255, 255, 255, 0.1)'
+            ).configure_legend(
+                labelColor='#FFFFFF',
+                titleColor='#FFFFFF'
+            ).interactive()
+            
+            st.altair_chart(grafico, use_container_width=True)
         else:
             st.write("Nenhum dado registrado ainda para este perfil.")
     else:
