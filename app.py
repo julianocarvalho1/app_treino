@@ -182,7 +182,6 @@ with aba_treino:
         else:
             df_memoria = df_memoria_full[df_memoria_full['nome_treino'].str.startswith(f"{usuario_ativo}_", na=False)]
 
-        # O form agora nao tem borda visual nativa, contornando o bug da cor
         with st.form("form_treino", border=False):
             resultados = {}
             for i, row in df_exercicios.iterrows():
@@ -200,18 +199,38 @@ with aba_treino:
                 
                 resultados[row['exercicio']] = {'carga': carga, 'series_feitas': series_feitas, 'feito': feito}
                 
-                # Adiciona um pequeno espacamento entre as entradas dos exercicios
                 st.markdown('<div style="height: 15px;"></div>', unsafe_allow_html=True)
 
-            observacao = st.text_area("Observacoes:")
+            # --- SESSAO DE CARDIO ---
+            st.markdown("<hr style='border-top: 1px solid rgba(255,255,255,0.1); margin: 25px 0;'>", unsafe_allow_html=True)
+            st.markdown("<div class='pulse-content' style='font-size: 18px; font-weight: 600; color: white; margin-bottom: 5px;'>Cardio do Dia</div>", unsafe_allow_html=True)
+            
+            # Adicionado o titulo "Modalidade" para igualar a altura da caixa "Tempo (min)"
+            col_cardio, col_tempo_c = st.columns([2, 1])
+            with col_cardio:
+                tipo_cardio = st.selectbox("Modalidade", ["Nenhum", "Esteira", "Bike", "Corrida ao ar livre", "Eliptico"])
+            with col_tempo_c:
+                tempo_cardio = st.number_input("Tempo (min)", min_value=0, step=5, value=0, key="tempo_cardio_input")
+
+            st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
+            observacao = st.text_area("Observacoes gerais:")
+            
+            # --- BOTAO SALVAR ---
             if st.form_submit_button("Salvar Treino"):
                 conn = conectar()
                 cur = conn.cursor()
+                
                 for ex, dados in resultados.items():
                     if dados['feito'] or dados['series_feitas'] > 0:
                         obs_final = f"({dados['series_feitas']} series concluidas) {observacao}" if dados['series_feitas'] > 0 else observacao
                         cur.execute("INSERT INTO public.historico_treinos (data, nome_treino, exercicio, carga_kg, observacao) VALUES (%s, %s, %s, %s, %s)", 
                                     (data_treino, treino_db, ex, dados['carga'], obs_final))
+                
+                if tipo_cardio != "Nenhum" and tempo_cardio > 0:
+                    nome_ex_cardio = f"Cardio: {tipo_cardio}"
+                    cur.execute("INSERT INTO public.historico_treinos (data, nome_treino, exercicio, carga_kg, observacao) VALUES (%s, %s, %s, %s, %s)", 
+                                (data_treino, treino_db, nome_ex_cardio, tempo_cardio, "Minutos de cardio"))
+
                 conn.commit()
                 conn.close()
                 st.session_state['treino_ativo'] = False
