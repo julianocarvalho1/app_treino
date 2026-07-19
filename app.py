@@ -24,6 +24,13 @@ st.markdown(f"""
         background-color: {st.session_state.cor_base};
     }}
     
+    /* Remove o fundo cinza e a borda padrao dos formularios do Streamlit */
+    div[data-testid="stForm"] {{
+        background-color: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+    }}
+    
     div[data-testid="stButton"] > button, 
     div[data-testid="stFormSubmitButton"] > button {{
         background-color: rgba(255, 255, 255, 0.1) !important;
@@ -106,17 +113,19 @@ def carregar_historico_recente():
     conn.close()
     return df
 
-# ----------------- FUNCAO VISUAL DOS EXERCICIOS -----------------
+# ----------------- FUNCAO VISUAL DOS EXERCICIOS (REDUZIDO PARA MOBILE) -----------------
 def renderizar_cartao_exercicio(row, index):
     bg_color = "rgba(255, 255, 255, 0.04)" if index % 2 == 0 else "rgba(255, 255, 255, 0.08)"
     
     img_url = row.get('imagem_url')
     if img_url and isinstance(img_url, str) and len(img_url.strip()) > 5:
-        img_tag = f'<div style="flex-shrink: 0; width: 75px; height: 75px; margin-right: 18px; border-radius: 10px; background-color: white; padding: 3px; display: flex; align-items: center; justify-content: center;"><a href="{img_url}" target="_blank" style="display: block; width: 100%; height: 100%;"><img src="{img_url}" style="width: 100%; height: 100%; object-fit: contain; border-radius: 6px;"></a></div>'
+        # Imagem reduzida para 60x60px e margens menores
+        img_tag = f'<div style="flex-shrink: 0; width: 60px; height: 60px; margin-right: 14px; border-radius: 8px; background-color: white; padding: 2px; display: flex; align-items: center; justify-content: center;"><a href="{img_url}" target="_blank" style="display: block; width: 100%; height: 100%;"><img src="{img_url}" style="width: 100%; height: 100%; object-fit: contain; border-radius: 5px;"></a></div>'
     else:
-        img_tag = '<div style="flex-shrink: 0; width: 75px; height: 75px; margin-right: 18px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.1); border-radius:10px; font-size: 13px; color: rgba(255,255,255,0.6); text-align: center; font-weight: 600;">S/ Foto</div>'
+        img_tag = '<div style="flex-shrink: 0; width: 60px; height: 60px; margin-right: 14px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.1); border-radius:8px; font-size: 11px; color: rgba(255,255,255,0.6); text-align: center; font-weight: 600;">S/ Foto</div>'
         
-    html = f'<div style="display: flex; align-items: center; padding: 16px; border-radius: 14px; margin-bottom: 12px; background-color: {bg_color}; border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 4px 10px rgba(0,0,0,0.15);">{img_tag}<div class="pulse-content" style="line-height: 1.4; color: #FFFFFF; flex-grow: 1;"><div style="font-size: 1.05em; font-weight: 600; margin-bottom: 10px; letter-spacing: 0.3px;">{row["exercicio"]}</div><div style="display: flex; gap: 10px; font-size: 0.85em;"><span style="background-color: rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 6px; font-weight: 500;">{row["series"]} Series</span><span style="background-color: rgba(255,255,255,0.15); padding: 4px 10px; border-radius: 6px; font-weight: 500;">{row["repeticoes"]} Reps</span></div></div></div>'
+    # Fontes, espacamentos e tags de series/reps ajustados para ficarem compactos
+    html = f'<div style="display: flex; align-items: center; padding: 12px; border-radius: 12px; margin-bottom: 10px; background-color: {bg_color}; border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 2px 6px rgba(0,0,0,0.1);">{img_tag}<div class="pulse-content" style="line-height: 1.3; color: #FFFFFF; flex-grow: 1;"><div style="font-size: 14px; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.2px;">{row["exercicio"]}</div><div style="display: flex; gap: 8px; font-size: 11px;"><span style="background-color: rgba(255,255,255,0.15); padding: 3px 8px; border-radius: 5px; font-weight: 500;">{row["series"]} Series</span><span style="background-color: rgba(255,255,255,0.15); padding: 3px 8px; border-radius: 5px; font-weight: 500;">{row["repeticoes"]} Reps</span></div></div></div>'
     
     st.markdown(html, unsafe_allow_html=True)
 
@@ -173,7 +182,8 @@ with aba_treino:
         else:
             df_memoria = df_memoria_full[df_memoria_full['nome_treino'].str.startswith(f"{usuario_ativo}_", na=False)]
 
-        with st.form("form_treino"):
+        # O form agora nao tem borda visual nativa, contornando o bug da cor
+        with st.form("form_treino", border=False):
             resultados = {}
             for i, row in df_exercicios.iterrows():
                 mem = df_memoria[df_memoria['exercicio'] == row['exercicio']]
@@ -189,6 +199,9 @@ with aba_treino:
                 feito = col_check.checkbox("Feito", key=f"ch_{i}")
                 
                 resultados[row['exercicio']] = {'carga': carga, 'series_feitas': series_feitas, 'feito': feito}
+                
+                # Adiciona um pequeno espacamento entre as entradas dos exercicios
+                st.markdown('<div style="height: 15px;"></div>', unsafe_allow_html=True)
 
             observacao = st.text_area("Observacoes:")
             if st.form_submit_button("Salvar Treino"):
@@ -209,7 +222,7 @@ with aba_treino:
 # ----------------- ABA 2: CONFIGURAR FICHA -----------------
 with aba_fichas:
     st.subheader(f"Adicionar Exercicio para {usuario_ativo}")
-    with st.form("nova_ficha", clear_on_submit=True):
+    with st.form("nova_ficha", clear_on_submit=True, border=False):
         n_treino = st.selectbox("Treino", ["Treino A", "Treino B", "Treino C", "Treino D", "Treino E"])
         exer = st.text_input("Exercicio")
         ser = st.number_input("Series", 1)
