@@ -13,8 +13,9 @@ if 'usuarios_dinamicos' not in st.session_state:
 
 # Cor fixa premium para o fundo do app
 COR_FUNDO_APP = '#121212' 
+COR_FUNDO_INPUTS = '#1E1E1E'
 
-# CSS Fixo
+# CSS Fixo e Forcado para Inputs
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
@@ -23,6 +24,22 @@ st.markdown(f"""
     
     .stApp {{
         background-color: {COR_FUNDO_APP};
+    }}
+    
+    /* Forca a cor do menu lateral (sidebar) */
+    [data-testid="stSidebar"] {{
+        background-color: #181818 !important;
+    }}
+    
+    /* Forca a cor de TODAS as caixas de selecao e inputs para grafite escuro, removendo tons avermelhados */
+    div[data-baseweb="select"] > div,
+    input[type="text"],
+    input[type="number"],
+    textarea,
+    div[data-baseweb="baseInput"] {{
+        background-color: {COR_FUNDO_INPUTS} !important;
+        color: white !important;
+        border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }}
     
     /* Remove o fundo cinza e a borda padrao dos formularios do Streamlit */
@@ -317,9 +334,11 @@ with aba_metricas:
             df_h = df_memoria_full[df_memoria_full['nome_treino'].str.startswith(f"{usuario_ativo}_", na=False)].copy()
 
         if not df_h.empty:
+            # Mantendo a coluna data como formato datetime puro, sem converter para string.
+            # Isso forca o Streamlit a desenhar o eixo X do grafico como uma linha do tempo nativa,
+            # organizando as datas horizontalmente e de forma limpa.
             df_h['data'] = pd.to_datetime(df_h['data'])
             df_pivot = df_h.pivot(index='data', columns='exercicio', values='carga_kg')
-            df_pivot.index = df_pivot.index.strftime('%d/%m/%Y')
             st.line_chart(df_pivot)
         else:
             st.write("Nenhum dado registrado ainda para este perfil.")
