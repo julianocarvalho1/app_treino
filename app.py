@@ -4,9 +4,10 @@ import pandas as pd
 import time
 from datetime import date
 
+# Configuração da página
 st.set_page_config(page_title="Pulse", layout="centered")
 
-# CSS Corrigido: Agora usamos uma classe específica (.pulse-content)
+# CSS para estilo limpo e fonte amigável, sem quebrar ícones
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
@@ -36,6 +37,20 @@ DATABASE_URL = "postgresql://postgres.fcinidlhstrvnijrjsym:aKl9XHr8W3VLuICT@aws-
 def conectar():
     return psycopg2.connect(DATABASE_URL)
 
+@st.cache_data(ttl=600)
+def carregar_fichas_do_banco(treino):
+    conn = conectar()
+    df = pd.read_sql_query("SELECT id, exercicio, series, repeticoes, imagem_url FROM public.fichas_personal WHERE nome_treino = %s", conn, params=(treino,))
+    conn.close()
+    return df
+
+@st.cache_data(ttl=600)
+def carregar_historico_recente():
+    conn = conectar()
+    df = pd.read_sql_query("SELECT exercicio, carga_kg, data FROM public.historico_treinos ORDER BY data DESC", conn)
+    conn.close()
+    return df
+
 aba_treino, aba_fichas, aba_metricas = st.tabs(["Treino do Dia", "Configurar Ficha", "Métricas"])
 
 # ----------------- ABA 1: TREINO -----------------
@@ -43,9 +58,7 @@ with aba_treino:
     data_treino = st.date_input("Data", value=date.today(), format="DD/MM/YYYY")
     treino_hoje = st.selectbox("Selecione a ficha:", ["Treino A", "Treino B", "Treino C", "Treino D", "Treino E"])
     
-    conn = conectar()
-    df_preview = pd.read_sql_query("SELECT exercicio, series, repeticoes, imagem_url FROM public.fichas_personal WHERE nome_treino = %s", conn, params=(treino_hoje,))
-    conn.close()
+    df_preview = carregar_fichas_do_banco(treino_hoje)
     
     with st.expander("Visualizar exercícios da ficha selecionada"):
         if not df_preview.empty:
@@ -60,7 +73,6 @@ with aba_treino:
                 else:
                     col1.write("—")
                 
-                # Aplicando a classe pulse-content apenas aqui
                 col2.markdown(f"<div class='pulse-content'><strong>{row['exercicio']}</strong><br><small>{row['series']} séries | {row['repeticoes']} reps</small></div>", unsafe_allow_html=True)
         else:
             st.write("Ficha vazia.")
@@ -76,10 +88,8 @@ with aba_treino:
         st.session_state['treino_ativo'] = True
     
     if st.session_state.get('treino_ativo'):
-        conn = conectar()
-        df_exercicios = pd.read_sql_query("SELECT id, exercicio, series, repeticoes, imagem_url FROM public.fichas_personal WHERE nome_treino = %s", conn, params=(treino_hoje,))
-        df_memoria = pd.read_sql_query("SELECT exercicio, carga_kg FROM public.historico_treinos ORDER BY data DESC", conn)
-        conn.close()
+        df_exercicios = carregar_fichas_do_banco(treino_hoje)
+        df_memoria = carregar_historico_recente()
 
         with st.form("form_treino"):
             resultados = {}
@@ -90,7 +100,7 @@ with aba_treino:
                 st.markdown(f'<div class="exercicio-container pulse-content">', unsafe_allow_html=True)
                 col_img, col_info, col_input, col_check = st.columns([1, 2, 1, 1])
                 if row['imagem_url']: col_img.image(row['imagem_url'], width=50)
-                col_info.markdown(f"<strong>{row['exercicio']}</strong><br>{row['series']}x{row['repeticoes']}", unsafe_allow_html=True)
+                col_info.markdown(f"<strong>{row['exercicio']}</strong><br>{row['series']} x {row['repeticoes']}", unsafe_allow_html=True)
                 carga = col_input.number_input("kg", value=carga_ant, key=f"c_{i}")
                 feito = col_check.checkbox("Feito", key=f"ch_{i}")
                 resultados[row['exercicio']] = {'carga': carga, 'feito': feito}
@@ -107,6 +117,7 @@ with aba_treino:
                 conn.commit()
                 conn.close()
                 st.session_state['treino_ativo'] = False
+                st.cache_data.clear() # Limpa o cache após salvar
                 st.success("Treino salvo!")
                 st.rerun()
 
@@ -125,6 +136,7 @@ with aba_fichas:
             cur.execute("INSERT INTO public.fichas_personal (nome_treino, exercicio, series, repeticoes, imagem_url) VALUES (%s, %s, %s, %s, %s)", (n_treino, exer, ser, rep, link_img))
             conn.commit()
             conn.close()
+            st.cache_data.clear()
             st.rerun()
     
     st.divider()
@@ -132,9 +144,8 @@ with aba_fichas:
     lista_treinos = ["Treino A", "Treino B", "Treino C", "Treino D", "Treino E"]
     for t in lista_treinos:
         with st.expander(f"Visualizar {t}"):
-            conn = conectar()
-            df_t = pd.read_sql_query("SELECT id, exercicio, series, repeticoes FROM public.fichas_personal WHERE nome_treino = %s", conn, params=(t,))
-            conn.close()
+            df_t = carregar_fichas_do_banco(t)
+            
             if not df_t.empty:
                 for _, row in df_t.iterrows():
                     col1, col2 = st.columns([5, 1])
@@ -145,15 +156,14 @@ with aba_fichas:
                         cur.execute("DELETE FROM public.fichas_personal WHERE id = %s", (row['id'],))
                         conn.commit()
                         conn.close()
+                        st.cache_data.clear()
                         st.rerun()
             else:
                 st.write("Nenhum exercício nesta ficha.")
 
 # ----------------- ABA 3: MÉTRICAS -----------------
 with aba_metricas:
-    conn = conectar()
-    df_h = pd.read_sql_query("SELECT * FROM public.historico_treinos", conn)
-    conn.close()
+    df_h = carregar_historico_recente()
     if not df_h.empty:
         df_h['data'] = pd.to_datetime(df_h['data'])
         df_pivot = df_h.pivot(index='data', columns='exercicio', values='carga_kg')
