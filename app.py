@@ -16,7 +16,7 @@ if 'usuarios_dinamicos' not in st.session_state:
 COR_FUNDO_APP = '#121212' 
 COR_FUNDO_INPUTS = '#1E1E1E'
 
-# CSS Fixo e Forcado para Inputs
+# CSS Fixo e Forcado
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
@@ -27,12 +27,10 @@ st.markdown(f"""
         background-color: {COR_FUNDO_APP};
     }}
     
-    /* Forca a cor do menu lateral (sidebar) */
     [data-testid="stSidebar"] {{
         background-color: #181818 !important;
     }}
     
-    /* Forca a cor de TODAS as caixas de selecao e inputs */
     div[data-baseweb="select"] > div,
     input[type="text"],
     input[type="number"],
@@ -43,7 +41,6 @@ st.markdown(f"""
         border: 1px solid rgba(255, 255, 255, 0.1) !important;
     }}
     
-    /* Remove o fundo cinza e a borda padrao dos formularios do Streamlit */
     div[data-testid="stForm"] {{
         background-color: transparent !important;
         border: none !important;
@@ -78,7 +75,6 @@ def conectar():
     return psycopg2.connect(DATABASE_URL)
 
 # ----------------- CONFIGURACOES DE GRUPOS MUSCULARES -----------------
-# Descricoes atualizadas conforme sua solicitacao
 descricoes_treinos = {
     "Juliano": {
         "Treino A": "PEITO, ESTIMULO PARA OMBRO, TRICEPS E PANTURRILHA",
@@ -241,15 +237,17 @@ with aba_treino:
                 
                 st.markdown('<div style="height: 15px;"></div>', unsafe_allow_html=True)
 
-            # --- SESSAO DE CARDIO ---
+            # --- SESSAO DE CARDIO (ALINHAMENTO CORRIGIDO) ---
             st.markdown("<hr style='border-top: 1px solid rgba(255,255,255,0.1); margin: 25px 0;'>", unsafe_allow_html=True)
-            st.markdown("<div class='pulse-content' style='font-size: 18px; font-weight: 600; color: white; margin-bottom: 5px;'>Cardio do Dia</div>", unsafe_allow_html=True)
+            st.markdown("<div class='pulse-content' style='font-size: 18px; font-weight: 600; color: white; margin-bottom: 10px;'>Cardio do Dia</div>", unsafe_allow_html=True)
             
             col_cardio, col_tempo_c = st.columns([2, 1])
             with col_cardio:
-                tipo_cardio = st.selectbox("Modalidade", ["Nenhum", "Esteira", "Bike", "Corrida ao ar livre", "Eliptico"])
+                st.markdown("<div style='font-size: 13px; color: #aaa; margin-bottom: 5px;'>Modalidade</div>", unsafe_allow_html=True)
+                tipo_cardio = st.selectbox("Modalidade", ["Nenhum", "Esteira", "Bike", "Corrida ao ar livre", "Eliptico"], label_visibility="collapsed")
             with col_tempo_c:
-                tempo_cardio = st.number_input("Tempo (min)", min_value=0, step=5, value=0, key="tempo_cardio_input")
+                st.markdown("<div style='font-size: 13px; color: #aaa; margin-bottom: 5px;'>Tempo (min)</div>", unsafe_allow_html=True)
+                tempo_cardio = st.number_input("Tempo (min)", min_value=0, step=5, value=0, key="tempo_cardio_input", label_visibility="collapsed")
 
             st.markdown("<div style='height: 15px;'></div>", unsafe_allow_html=True)
             observacao = st.text_area("Observacoes gerais:")
@@ -323,7 +321,7 @@ with aba_fichas:
             else:
                 st.write("Nenhum exercicio nesta ficha.")
 
-# ----------------- ABA 3: METRICAS -----------------
+# ----------------- ABA 3: METRICAS E GERENCIAMENTO -----------------
 with aba_metricas:
     st.subheader(f"Progresso de {usuario_ativo}")
     df_memoria_full = carregar_historico_recente()
@@ -336,28 +334,57 @@ with aba_metricas:
             df_h = df_memoria_full[df_memoria_full['nome_treino'].str.startswith(f"{usuario_ativo}_", na=False)].copy()
 
         if not df_h.empty:
-            # Tratamento de Data e Grafico usando Altair para controle absoluto de cor e formato
             df_h['data'] = pd.to_datetime(df_h['data'])
             
-            grafico = alt.Chart(df_h).mark_line(point=True).encode(
-                x=alt.X('data:T', axis=alt.Axis(format='%d/%m/%Y', title='Data', labelAngle=-45)),
-                y=alt.Y('carga_kg:Q', title='Carga (kg) ou Tempo (min)'),
-                color=alt.Color('exercicio:N', legend=alt.Legend(title="Exercicio")),
+            # Grafico Altair (theme=None remove a cor vermelha obrigatoria do Streamlit)
+            grafico = alt.Chart(df_h).mark_line(point=True, strokeWidth=3).encode(
+                x=alt.X('data:T', axis=alt.Axis(format='%d/%m/%Y', title='Data', labelAngle=-45, grid=False)),
+                y=alt.Y('carga_kg:Q', title='Carga (kg) ou Tempo (min)', axis=alt.Axis(gridColor='rgba(255,255,255,0.1)')),
+                color=alt.Color('exercicio:N', scale=alt.Scale(scheme='tableau20'), legend=alt.Legend(title="Exercicio", orient='bottom')),
                 tooltip=[alt.Tooltip('data:T', format='%d/%m/%Y', title='Data'), 'exercicio', 'carga_kg']
             ).properties(
-                height=400
+                height=450,
+                background='transparent'
+            ).configure_axis(
+                labelColor='#DDDDDD',
+                titleColor='#FFFFFF',
+                domainColor='rgba(255, 255, 255, 0.2)',
+                tickColor='rgba(255, 255, 255, 0.2)'
+            ).configure_legend(
+                labelColor='#DDDDDD',
+                titleColor='#FFFFFF'
             ).configure_view(
                 strokeWidth=0
-            ).configure_axis(
-                labelColor='#FFFFFF',
-                titleColor='#FFFFFF',
-                gridColor='rgba(255, 255, 255, 0.1)'
-            ).configure_legend(
-                labelColor='#FFFFFF',
-                titleColor='#FFFFFF'
             ).interactive()
             
-            st.altair_chart(grafico, use_container_width=True)
+            st.altair_chart(grafico, use_container_width=True, theme=None)
+            
+            # --- GERENCIAR HISTORICO (EXCLUIR DIA) ---
+            st.divider()
+            st.subheader("Gerenciar Historico")
+            st.markdown("<small style='color:#aaa;'>Selecione uma data para remover todos os registros de treino daquele dia (corrige graficos).</small>", unsafe_allow_html=True)
+            
+            datas_disponiveis = df_h['data'].dt.strftime('%d/%m/%Y').unique()
+            col_del1, col_del2 = st.columns([2, 1])
+            
+            with col_del1:
+                data_para_remover = st.selectbox("Data do Treino", datas_disponiveis, label_visibility="collapsed")
+            with col_del2:
+                if st.button("Remover Dia"):
+                    data_db = pd.to_datetime(data_para_remover, format='%d/%m/%Y').strftime('%Y-%m-%d')
+                    
+                    conn = conectar()
+                    cur = conn.cursor()
+                    if usuario_ativo == "Juliano":
+                        cur.execute("DELETE FROM public.historico_treinos WHERE data = %s AND nome_treino IN ('Treino A', 'Treino B', 'Treino C', 'Treino D', 'Treino E')", (data_db,))
+                    else:
+                        cur.execute("DELETE FROM public.historico_treinos WHERE data = %s AND nome_treino LIKE %s", (data_db, f"{usuario_ativo}_%"))
+                    conn.commit()
+                    conn.close()
+                    
+                    st.cache_data.clear()
+                    st.rerun()
+
         else:
             st.write("Nenhum dado registrado ainda para este perfil.")
     else:
