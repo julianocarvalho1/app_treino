@@ -7,7 +7,7 @@ from datetime import date
 # Configuração da página
 st.set_page_config(page_title="Pulse", layout="centered")
 
-# CSS para estilo limpo e fonte amigável, sem quebrar ícones
+# CSS Ajustado para visual mais sutil
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
@@ -16,12 +16,9 @@ st.markdown("""
         font-family: 'Inter', sans-serif !important;
     }
     
-    .exercicio-container { 
-        border: 1px solid #444; 
-        padding: 15px; 
-        border-radius: 12px; 
-        margin-bottom: 10px; 
-        background-color: #1a1a1a; 
+    .exercicio-bloco { 
+        padding-top: 10px; 
+        padding-bottom: 10px; 
     }
     
     #MainMenu {visibility: hidden;} 
@@ -74,6 +71,7 @@ with aba_treino:
                     col1.write("—")
                 
                 col2.markdown(f"<div class='pulse-content'><strong>{row['exercicio']}</strong><br><small>{row['series']} séries | {row['repeticoes']} reps</small></div>", unsafe_allow_html=True)
+                st.divider() # Linha sutil separando os exercícios
         else:
             st.write("Ficha vazia.")
 
@@ -97,7 +95,7 @@ with aba_treino:
                 mem = df_memoria[df_memoria['exercicio'] == row['exercicio']]
                 carga_ant = float(mem.iloc[0]['carga_kg']) if not mem.empty else 0.0
                 
-                st.markdown(f'<div class="exercicio-container pulse-content">', unsafe_allow_html=True)
+                st.markdown(f'<div class="exercicio-bloco pulse-content">', unsafe_allow_html=True)
                 col_img, col_info, col_input, col_check = st.columns([1, 2, 1, 1])
                 if row['imagem_url']: col_img.image(row['imagem_url'], width=50)
                 col_info.markdown(f"<strong>{row['exercicio']}</strong><br>{row['series']} x {row['repeticoes']}", unsafe_allow_html=True)
@@ -105,6 +103,7 @@ with aba_treino:
                 feito = col_check.checkbox("Feito", key=f"ch_{i}")
                 resultados[row['exercicio']] = {'carga': carga, 'feito': feito}
                 st.markdown('</div>', unsafe_allow_html=True)
+                st.divider() # Linha sutil entre os inputs
 
             observacao = st.text_area("Observações:")
             if st.form_submit_button("Salvar Treino"):
@@ -117,7 +116,7 @@ with aba_treino:
                 conn.commit()
                 conn.close()
                 st.session_state['treino_ativo'] = False
-                st.cache_data.clear() # Limpa o cache após salvar
+                st.cache_data.clear()
                 st.success("Treino salvo!")
                 st.rerun()
 
@@ -158,6 +157,7 @@ with aba_fichas:
                         conn.close()
                         st.cache_data.clear()
                         st.rerun()
+                    st.divider()
             else:
                 st.write("Nenhum exercício nesta ficha.")
 
