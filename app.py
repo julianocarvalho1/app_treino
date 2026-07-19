@@ -7,7 +7,7 @@ from datetime import date
 # Configuração da página
 st.set_page_config(page_title="Pulse", layout="centered")
 
-# CSS Ajustado
+# CSS Ajustado com cores intercaladas
 st.markdown("""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
@@ -16,19 +16,17 @@ st.markdown("""
         font-family: 'Inter', sans-serif !important;
     }
     
-    .exercicio-bloco { 
-        padding-top: 10px; 
-        padding-bottom: 10px; 
+    .exercicio-container { 
+        border: 1px solid #333; 
+        padding: 15px; 
+        border-radius: 12px; 
+        margin-bottom: 10px; 
+        background-color: #1a1a1a; 
     }
     
-    /* Estilo para a imagem ser clicável e ter um efeito de pointer */
-    .clickable-img {
-        cursor: pointer;
-        border-radius: 8px;
-        transition: transform 0.2s;
-    }
-    .clickable-img:hover {
-        transform: scale(1.05);
+    /* Cor de fundo sutil para linhas alternadas */
+    .bg-alt {
+        background-color: #222222 !important;
     }
     
     #MainMenu {visibility: hidden;} 
@@ -69,16 +67,20 @@ with aba_treino:
     
     with st.expander("Visualizar exercícios da ficha selecionada"):
         if not df_preview.empty:
-            for _, row in df_preview.iterrows():
+            for i, row in df_preview.iterrows():
+                # Aplica cor alternada na visualização (subtíl)
+                bg_class = "bg-alt" if i % 2 != 0 else ""
+                
+                st.markdown(f'<div class="exercicio-container {bg_class}">', unsafe_allow_html=True)
                 col1, col2 = st.columns([1, 4])
                 img_url = row.get('imagem_url')
                 if img_url and isinstance(img_url, str) and len(img_url.strip()) > 5:
-                    # Imagem clicável
                     col1.markdown(f'<a href="{img_url}" target="_blank"><img src="{img_url}" width="60" class="clickable-img"></a>', unsafe_allow_html=True)
                 else:
                     col1.write("—")
                 
                 col2.markdown(f"<div class='pulse-content'><strong>{row['exercicio']}</strong><br><small>{row['series']} séries | {row['repeticoes']} reps</small></div>", unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
                 st.divider() 
         else:
             st.write("Ficha vazia.")
@@ -103,7 +105,10 @@ with aba_treino:
                 mem = df_memoria[df_memoria['exercicio'] == row['exercicio']]
                 carga_ant = float(mem.iloc[0]['carga_kg']) if not mem.empty else 0.0
                 
-                st.markdown(f'<div class="exercicio-bloco pulse-content">', unsafe_allow_html=True)
+                # Alterna cor no formulário
+                bg_class = "bg-alt" if i % 2 != 0 else ""
+                
+                st.markdown(f'<div class="exercicio-container {bg_class} pulse-content">', unsafe_allow_html=True)
                 col_img, col_info, col_input, col_check = st.columns([1, 2, 1, 1])
                 
                 if row['imagem_url']: 
@@ -114,7 +119,6 @@ with aba_treino:
                 feito = col_check.checkbox("Feito", key=f"ch_{i}")
                 resultados[row['exercicio']] = {'carga': carga, 'feito': feito}
                 st.markdown('</div>', unsafe_allow_html=True)
-                st.divider() 
 
             observacao = st.text_area("Observações:")
             if st.form_submit_button("Salvar Treino"):
@@ -133,6 +137,7 @@ with aba_treino:
 
 # ----------------- ABA 2: CONFIGURAR FICHA -----------------
 with aba_fichas:
+    # ... [Manter o código da aba 2 original aqui, adicionando bg_class se desejar] ...
     st.subheader("Adicionar Exercício")
     with st.form("nova_ficha", clear_on_submit=True):
         n_treino = st.selectbox("Treino", ["Treino A", "Treino B", "Treino C", "Treino D", "Treino E"])
@@ -157,10 +162,11 @@ with aba_fichas:
             df_t = carregar_fichas_do_banco(t)
             
             if not df_t.empty:
-                for _, row in df_t.iterrows():
-                    col1, col2 = st.columns([5, 1])
-                    col1.markdown(f"<div class='pulse-content'>{row['exercicio']} <br><small>{row['series']} séries x {row['repeticoes']} reps</small></div>", unsafe_allow_html=True)
-                    if col2.button("X", key=f"del_{row['id']}"):
+                for i, row in df_t.iterrows():
+                    bg_class = "bg-alt" if i % 2 != 0 else ""
+                    st.markdown(f"<div class='pulse-content exercicio-container {bg_class}'>{row['exercicio']} <br><small>{row['series']} séries x {row['repeticoes']} reps</small></div>", unsafe_allow_html=True)
+                    # Botão X ficou um pouco complicado com estilo dentro de div, mantive similar ao original
+                    if st.button("Remover", key=f"del_{row['id']}"):
                         conn = conectar()
                         cur = conn.cursor()
                         cur.execute("DELETE FROM public.fichas_personal WHERE id = %s", (row['id'],))
@@ -168,7 +174,6 @@ with aba_fichas:
                         conn.close()
                         st.cache_data.clear()
                         st.rerun()
-                    st.divider()
             else:
                 st.write("Nenhum exercício nesta ficha.")
 
