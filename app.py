@@ -58,6 +58,31 @@ DATABASE_URL = "postgresql://postgres.fcinidlhstrvnijrjsym:aKl9XHr8W3VLuICT@aws-
 def conectar():
     return psycopg2.connect(DATABASE_URL)
 
+# ----------------- CONFIGURACOES DE GRUPOS MUSCULARES -----------------
+# Edite os textos abaixo para alterar o que aparece na frente de cada treino.
+descricoes_treinos = {
+    "Juliano": {
+        "Treino A": "PEITO, ESTIMULO PARA OMBRO, TRICEPS E PANTURRILHA",
+        "Treino B": "COSTA, BICEPS E ABDOMEN",
+        "Treino C": "PERNA COMPLETA",
+        "Treino D": "OMBROS E TRAPEZIO",
+        "Treino E": "BRACO COMPLETO"
+    },
+    "Sobrinha": {
+        "Treino A": "MEMBROS INFERIORES",
+        "Treino B": "MEMBROS SUPERIORES",
+        "Treino C": "CARDIO E ABDOMEN",
+        "Treino D": "GLUTEOS E POSTERIOR",
+        "Treino E": "FULL BODY"
+    }
+}
+
+def formatar_treino(treino_nome, usuario):
+    descricao = descricoes_treinos.get(usuario, {}).get(treino_nome, "")
+    if descricao:
+        return f"{treino_nome} - {descricao}"
+    return treino_nome
+
 # ----------------- LOGICA DE USUARIOS -----------------
 def get_todos_usuarios():
     try:
@@ -119,12 +144,10 @@ def renderizar_cartao_exercicio(row, index):
     
     img_url = row.get('imagem_url')
     if img_url and isinstance(img_url, str) and len(img_url.strip()) > 5:
-        # Imagem reduzida para 60x60px e margens menores
         img_tag = f'<div style="flex-shrink: 0; width: 60px; height: 60px; margin-right: 14px; border-radius: 8px; background-color: white; padding: 2px; display: flex; align-items: center; justify-content: center;"><a href="{img_url}" target="_blank" style="display: block; width: 100%; height: 100%;"><img src="{img_url}" style="width: 100%; height: 100%; object-fit: contain; border-radius: 5px;"></a></div>'
     else:
         img_tag = '<div style="flex-shrink: 0; width: 60px; height: 60px; margin-right: 14px; display:flex; align-items:center; justify-content:center; background:rgba(255,255,255,0.1); border-radius:8px; font-size: 11px; color: rgba(255,255,255,0.6); text-align: center; font-weight: 600;">S/ Foto</div>'
         
-    # Fontes, espacamentos e tags de series/reps ajustados para ficarem compactos
     html = f'<div style="display: flex; align-items: center; padding: 12px; border-radius: 12px; margin-bottom: 10px; background-color: {bg_color}; border: 1px solid rgba(255,255,255,0.06); box-shadow: 0 2px 6px rgba(0,0,0,0.1);">{img_tag}<div class="pulse-content" style="line-height: 1.3; color: #FFFFFF; flex-grow: 1;"><div style="font-size: 14px; font-weight: 600; margin-bottom: 8px; letter-spacing: 0.2px;">{row["exercicio"]}</div><div style="display: flex; gap: 8px; font-size: 11px;"><span style="background-color: rgba(255,255,255,0.15); padding: 3px 8px; border-radius: 5px; font-weight: 500;">{row["series"]} Series</span><span style="background-color: rgba(255,255,255,0.15); padding: 3px 8px; border-radius: 5px; font-weight: 500;">{row["repeticoes"]} Reps</span></div></div></div>'
     
     st.markdown(html, unsafe_allow_html=True)
@@ -141,7 +164,12 @@ with aba_treino:
         st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True) 
         st.session_state.cor_base = st.color_picker("Cor do Tema", st.session_state.cor_base, label_visibility="collapsed")
 
-    treino_hoje = st.selectbox("Selecione a ficha:", ["Treino A", "Treino B", "Treino C", "Treino D", "Treino E"])
+    # AQUI ESTA A MAGICA DA FORMATACAO: format_func chama o dicionario
+    treino_hoje = st.selectbox(
+        "Selecione a ficha:", 
+        ["Treino A", "Treino B", "Treino C", "Treino D", "Treino E"],
+        format_func=lambda x: formatar_treino(x, usuario_ativo)
+    )
     treino_db = get_nome_treino_db(treino_hoje, usuario_ativo)
     
     df_preview = carregar_fichas_do_banco(treino_db)
@@ -153,7 +181,6 @@ with aba_treino:
         else:
             st.write("Ficha vazia para este perfil.")
 
-    # Controle do Temporizador de Descanso
     st.divider()
     col_tempo, col_btn_descanso = st.columns([2, 3])
     with col_tempo:
@@ -205,7 +232,6 @@ with aba_treino:
             st.markdown("<hr style='border-top: 1px solid rgba(255,255,255,0.1); margin: 25px 0;'>", unsafe_allow_html=True)
             st.markdown("<div class='pulse-content' style='font-size: 18px; font-weight: 600; color: white; margin-bottom: 5px;'>Cardio do Dia</div>", unsafe_allow_html=True)
             
-            # Adicionado o titulo "Modalidade" para igualar a altura da caixa "Tempo (min)"
             col_cardio, col_tempo_c = st.columns([2, 1])
             with col_cardio:
                 tipo_cardio = st.selectbox("Modalidade", ["Nenhum", "Esteira", "Bike", "Corrida ao ar livre", "Eliptico"])
@@ -242,7 +268,11 @@ with aba_treino:
 with aba_fichas:
     st.subheader(f"Adicionar Exercicio para {usuario_ativo}")
     with st.form("nova_ficha", clear_on_submit=True, border=False):
-        n_treino = st.selectbox("Treino", ["Treino A", "Treino B", "Treino C", "Treino D", "Treino E"])
+        n_treino = st.selectbox(
+            "Treino", 
+            ["Treino A", "Treino B", "Treino C", "Treino D", "Treino E"],
+            format_func=lambda x: formatar_treino(x, usuario_ativo)
+        )
         exer = st.text_input("Exercicio")
         ser = st.number_input("Series", 1)
         rep = st.text_input("Repeticoes")
@@ -262,7 +292,8 @@ with aba_fichas:
     st.subheader(f"Treinos de {usuario_ativo}")
     lista_treinos = ["Treino A", "Treino B", "Treino C", "Treino D", "Treino E"]
     for t in lista_treinos:
-        with st.expander(f"Visualizar {t}"):
+        titulo_expander = formatar_treino(t, usuario_ativo)
+        with st.expander(f"Visualizar {titulo_expander}"):
             treino_db = get_nome_treino_db(t, usuario_ativo)
             df_t = carregar_fichas_do_banco(treino_db)
             if not df_t.empty:
