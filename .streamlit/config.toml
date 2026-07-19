@@ -1,0 +1,15 @@
+[theme]
+# Cor principal (usada em botões de destaque, calendário e gráficos)
+primaryColor = "#00FFAA" 
+
+# Cor de fundo principal do aplicativo (um tom de cinza bem escuro/preto)
+backgroundColor = "#210404" 
+
+# Cor de fundo secundária (usada em formulários e caixas de seleção)
+secondaryBackgroundColor = "#262730" 
+
+# Cor do texto
+textColor = "#FAFAFA" 
+
+# Fonte do aplicativo
+font = "sans serif"
