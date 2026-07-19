@@ -8,12 +8,13 @@ from datetime import date
 st.set_page_config(page_title="Pulse", layout="centered")
 
 # Inicializa variaveis no session_state
-if 'cor_base' not in st.session_state:
-    st.session_state.cor_base = '#2A0D0D' 
 if 'usuarios_dinamicos' not in st.session_state:
     st.session_state.usuarios_dinamicos = []
 
-# CSS Dinamico
+# Cor fixa premium para o fundo do app
+COR_FUNDO_APP = '#121212' 
+
+# CSS Fixo
 st.markdown(f"""
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap');
@@ -21,7 +22,7 @@ st.markdown(f"""
     .pulse-content {{ font-family: 'Inter', sans-serif !important; }}
     
     .stApp {{
-        background-color: {st.session_state.cor_base};
+        background-color: {COR_FUNDO_APP};
     }}
     
     /* Remove o fundo cinza e a borda padrao dos formularios do Streamlit */
@@ -59,7 +60,6 @@ def conectar():
     return psycopg2.connect(DATABASE_URL)
 
 # ----------------- CONFIGURACOES DE GRUPOS MUSCULARES -----------------
-# Edite os textos abaixo para alterar o que aparece na frente de cada treino.
 descricoes_treinos = {
     "Juliano": {
         "Treino A": "PEITO, ESTIMULO PARA OMBRO, TRICEPS E PANTURRILHA",
@@ -157,14 +157,8 @@ aba_treino, aba_fichas, aba_metricas = st.tabs(["Treino do Dia", "Configurar Fic
 
 # ----------------- ABA 1: TREINO -----------------
 with aba_treino:
-    col_data, col_cor = st.columns([5, 1])
-    with col_data:
-        data_treino = st.date_input("Data", value=date.today(), format="DD/MM/YYYY")
-    with col_cor:
-        st.markdown("<div style='margin-top: 28px;'></div>", unsafe_allow_html=True) 
-        st.session_state.cor_base = st.color_picker("Cor do Tema", st.session_state.cor_base, label_visibility="collapsed")
+    data_treino = st.date_input("Data", value=date.today(), format="DD/MM/YYYY")
 
-    # AQUI ESTA A MAGICA DA FORMATACAO: format_func chama o dicionario
     treino_hoje = st.selectbox(
         "Selecione a ficha:", 
         ["Treino A", "Treino B", "Treino C", "Treino D", "Treino E"],
